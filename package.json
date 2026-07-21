@@ -1,0 +1,88 @@
+{
+  "name": "forge-vscode",
+  "displayName": "Forge",
+  "description": "Forge language support — syntax highlighting and LSP",
+  "version": "0.1.0",
+  "publisher": "forge-language",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/forge-language/vscode-extension.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:forge"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "forge",
+        "aliases": [
+          "Forge",
+          "forge"
+        ],
+        "extensions": [
+          ".fg"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "forge",
+        "scopeName": "source.forge",
+        "path": "./syntaxes/forge.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Forge",
+      "properties": {
+        "forge.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the forge compiler binary."
+        },
+        "forge.forgeRoot": {
+          "type": "string",
+          "default": "",
+          "description": "Forge project root (--forge-root)."
+        },
+        "forge.libDir": {
+          "type": "string",
+          "default": "",
+          "description": "Directory with libforge_*.a (--lib-dir)."
+        },
+        "forge.includePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Extra -I paths for module resolution."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build:lsp": "npm install @forge/language-server@github:forge-language/language-server && npm run build --prefix node_modules/@forge/language-server",
+    "bundle:server": "node scripts/bundle-server.mjs",
+    "build": "npm run build:lsp && npm run bundle:server && tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "vscode:prepublish": "npm run build"
+  },
+  "dependencies": {
+    "@forge/language-server": "github:forge-language/language-server",
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.7.2"
+  }
+}

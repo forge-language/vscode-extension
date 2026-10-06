@@ -1,10 +1,10 @@
 {
   "name": "forge-vscode",
   "displayName": "Forge",
-  "description": "Forge language support — syntax highlighting and LSP",
+  "description": "Forge language support \u2014 syntax highlighting and LSP",
   "version": "0.1.0",
   "publisher": "forge-language",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/forge-language/vscode-extension.git"
@@ -65,19 +65,36 @@
           },
           "default": [],
           "description": "Extra -I paths for module resolution."
+        },
+        "forge.serverMode": {
+          "type": "string",
+          "enum": [
+            "native",
+            "typescript"
+          ],
+          "default": "native",
+          "description": "Language server implementation. Install and configure the selected server separately."
+        },
+        "forge.lspPath": {
+          "type": "string",
+          "default": "",
+          "description": "Native forge-lsp executable path or command name. Defaults to forge-lsp on PATH."
+        },
+        "forge.serverModule": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to the separately built TypeScript language server out/server.js. Required in typescript mode."
         }
       }
     }
   },
   "scripts": {
-    "build:lsp": "npm install @forge/language-server@github:forge-language/language-server && npm run build --prefix node_modules/@forge/language-server",
-    "bundle:server": "node scripts/bundle-server.mjs",
-    "build": "npm run build:lsp && npm run bundle:server && tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test tests/*.test.cjs",
     "watch": "tsc -p tsconfig.json --watch",
     "vscode:prepublish": "npm run build"
   },
   "dependencies": {
-    "@forge/language-server": "github:forge-language/language-server",
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {

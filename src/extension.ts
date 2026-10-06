@@ -1,30 +1,13 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import { workspace, ExtensionContext, WorkspaceConfiguration } from 'vscode';
-import {
-  LanguageClient,
-  LanguageClientOptions,
-  ServerOptions,
-  TransportKind,
-} from 'vscode-languageclient/node';
+import { workspace, ExtensionContext, window } from 'vscode';
+import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient/node';
+import { resolveServer } from './server';
 
 let client: LanguageClient | undefined;
 
-function resolveServerModule(context: ExtensionContext): string {
-  const bundled = path.join(context.extensionPath, 'server', 'out', 'server.js');
-  if (fs.existsSync(bundled)) return bundled;
-  return bundled;
-}
-
-function forgeConfig(): WorkspaceConfiguration {
-  return workspace.getConfiguration('forge');
-}
-
 function buildInitializationOptions() {
-  const cfg = forgeConfig();
-  const workspaceRoot = workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const cfg = workspace.getConfiguration('forge');
   return {
-    workspaceRoot,
+    workspaceRoot: workspace.workspaceFolders?.[0]?.uri.fsPath,
     forge: {
       path: cfg.get<string>('path') || undefined,
       forgeRoot: cfg.get<string>('forgeRoot') || undefined,
@@ -34,39 +17,57 @@ function buildInitializationOptions() {
   };
 }
 
-export function activate(context: ExtensionContext): void {
-  const serverModule = resolveServerModule(context);
-  const serverOptions: ServerOptions = {
-    run: { module: serverModule, transport: TransportKind.ipc },
-    debug: {
-      module: serverModule,
-      transport: TransportKind.ipc,
-      options: { execArgv: ['--nolazy', '--inspect=6010'] },
-    },
-  };
-
+async function startClient(context: ExtensionContext): Promise<void> {
+  const cfg = workspace.getConfiguration('forge');
+  const server = resolveServer({
+    serverMode: cfg.get<string>('serverMode'),
+    lspPath: cfg.get<string>('lspPath'),
+    serverModule: cfg.get<string>('serverModule'),
+  });
+  const serverOptions: ServerOptions = server.kind === 'native'
+    ? { command: server.command, args: [] }
+    : {
+      run: { module: server.module, transport: TransportKind.ipc },
+      debug: { module: server.module, transport: TransportKind.ipc, options: { execArgv: ['--nolazy', '--inspect=6010'] } },
+    };
+  const fileWatcher = workspace.createFileSystemWatcher('**/*.fg');
+  context.subscriptions.push(fileWatcher);
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: 'file', language: 'forge' }],
-    synchronize: {
-      configurationSection: 'forge',
-    },
     initializationOptions: buildInitializationOptions(),
+    synchronize: { fileEvents: fileWatcher },
   };
+  try {
+    client = new LanguageClient('forgeLanguageServer', 'Forge Language Server', serverOptions, clientOptions);
+    await client.start();
+  } catch (error) {
+    fileWatcher.dispose();
+    context.subscriptions.splice(context.subscriptions.indexOf(fileWatcher), 1);
+    client = undefined;
+    throw error;
+  }
+}
 
-  client = new LanguageClient('forgeLanguageServer', 'Forge Language Server', serverOptions, clientOptions);
-  context.subscriptions.push(
-    workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration('forge') && client?.isRunning()) {
-        void client.sendNotification('workspace/didChangeConfiguration', {
-          settings: { forge: buildInitializationOptions().forge },
-        });
-      }
-    }),
-  );
-  void client.start();
+export async function activate(context: ExtensionContext): Promise<void> {
+  context.subscriptions.push(workspace.onDidChangeConfiguration((event) => {
+    if (!event.affectsConfiguration('forge')) return;
+    if (['serverMode', 'lspPath', 'serverModule'].some((key) => event.affectsConfiguration(`forge.${key}`))) {
+      void window.showInformationMessage('Reload the VS Code window to apply Forge language server settings.');
+    } else if (client?.isRunning()) {
+      void client.sendNotification('workspace/didChangeConfiguration', {
+        settings: { forge: buildInitializationOptions().forge },
+      }).catch((error: unknown) => {
+        void window.showErrorMessage(`Forge configuration update failed: ${String(error)}`);
+      });
+    }
+  }));
+  try {
+    await startClient(context);
+  } catch (error) {
+    void window.showErrorMessage(`Forge: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 export function deactivate(): Promise<void> | undefined {
-  if (!client) return undefined;
-  return client.stop();
+  return client?.stop();
 }

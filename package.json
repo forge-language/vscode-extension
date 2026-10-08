@@ -1,8 +1,8 @@
 {
-  "name": "forge-vscode",
-  "displayName": "Forge",
+  "name": "forge-lsp-vscode",
+  "displayName": "Forge LSP",
   "description": "Forge language support \u2014 syntax highlighting and LSP",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "forge-language",
   "license": "Apache-2.0",
   "repository": {
@@ -86,7 +86,25 @@
           "description": "Absolute path to the separately built TypeScript language server out/server.js. Required in typescript mode."
         }
       }
-    }
+    },
+    "commands": [
+      {
+        "command": "forge.setup",
+        "title": "Forge: Set Up Language Server"
+      },
+      {
+        "command": "forge.startLanguageServer",
+        "title": "Forge: Start Language Server"
+      },
+      {
+        "command": "forge.restartLanguageServer",
+        "title": "Forge: Restart Language Server"
+      },
+      {
+        "command": "forge.showLanguageServerOutput",
+        "title": "Forge: Show Language Server Output"
+      }
+    ]
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -101,5 +119,20 @@
     "@types/node": "^22.10.0",
     "@types/vscode": "^1.85.0",
     "typescript": "^5.7.2"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Syntax highlighting is available. Language servers run only in trusted workspaces.",
+      "restrictedConfigurations": [
+        "forge.serverMode",
+        "forge.lspPath",
+        "forge.serverModule",
+        "forge.path",
+        "forge.forgeRoot",
+        "forge.libDir",
+        "forge.includePaths"
+      ]
+    }
   }
 }

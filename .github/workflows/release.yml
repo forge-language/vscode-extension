@@ -1,0 +1,26 @@
+name: Publish VS Code extension
+on:
+  push:
+    tags: ['v[0-9]*']
+permissions:
+  contents: read
+jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+  release:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx --yes @vscode/vsce@4.0.0 package
+      - run: sha256sum *.vsix > SHA256SUMS
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" *.vsix SHA256SUMS --verify-tag --title "Forge LSP $GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md

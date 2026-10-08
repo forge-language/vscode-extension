@@ -6,3 +6,6 @@ tests/**
 out/**/*.map
 tsconfig.json
 package-lock.json
+
+*.vsix
+.gitignore
